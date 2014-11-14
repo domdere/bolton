@@ -2,6 +2,28 @@
 
 Command line app to manage Haskell apps installed from hackage
 
+This is what I tend to do when installing a Haskell app (And its necessary cos some apps rely on static resources that end up getting put in the sandbox and you can't delete the sandbox anyway, and if you move the binary it screws it up).
+
+1.  Create a directory `~/haskell-bins/`
+2.  Create a directory named `~/haskell-bins/bin`
+3.  Add `~/haskell-bins/bin` to my PATH
+
+Then with every app I want to install:
+
+(assume the app I am trying to install is from a package named foo with a binary named bar)
+
+```
+$ cd ~/haskell-bins
+$ mkdir foo
+$ cd foo
+$ cabal sandbox init
+$ cabal install foo
+$ cd ../bin
+$ ln -sf ~/haskell-bins/foo/.cabal-sandbox/bin/bar
+```
+
+So `hank` is supposed to create something like this `haskell-bins` dir for you and manage the above process and allow you to install/uninstall apps and list the ones you have installed etc...
+
 ## Building the project
 
 Install the dependencies first with either:
