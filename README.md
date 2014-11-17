@@ -1,8 +1,8 @@
-# hank
+# bolton
 
 Command line app to manage Haskell apps installed from hackage
 
-This is what I tend to do when installing a Haskell app (And its necessary cos some apps rely on static resources that end up getting put in the sandbox and you can't delete the sandbox anyway, and if you move the binary it screws it up).
+This is the process prescribed to me (or at least *one* of them, but its been the most reliable one so far) when installing a Haskell app (And its necessary cos some apps rely on static resources that end up getting put in the sandbox and you can't delete the sandbox anyway, and if you move the binary it screws it up).
 
 1.  Create a directory `~/haskell-bins/`
 2.  Create a directory named `~/haskell-bins/bin`
@@ -22,7 +22,7 @@ $ cd ../bin
 $ ln -sf ~/haskell-bins/foo/.cabal-sandbox/bin/bar
 ```
 
-So `hank` is supposed to create something like this `haskell-bins` dir for you and manage the above process and allow you to install/uninstall apps and list the ones you have installed etc...
+So `bolton` is supposed to create something like this `haskell-bins` dir for you and manage the above process and allow you to install/uninstall apps and list the ones you have installed etc...
 
 ## Building the project
 
@@ -40,7 +40,7 @@ If you want to be able to build the tests, or:
 
 If you wish to build the benchmarks.
 
-The project must be "configured" at least once everytime `hank.cabal` changes, this can be done with:
+The project must be "configured" at least once everytime `bolton.cabal` changes, this can be done with:
 
     cabal configure
 
