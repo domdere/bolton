@@ -26,14 +26,6 @@ import System.Environment ( getArgs )
 versionString :: String
 versionString = "bolton: 0.0.1"
 
--- | checks the core flags of the app and if help and version dont appear passes control onto appMain where
--- | the user can do their own opt checks
---checkCoreFlagsAndRunMain :: [CommandLineOption] -> [String] -> IO ()
---checkCoreFlagsAndRunMain opts args
---    | Help `elem` opts      = printUsageMsg
---    | Version `elem` opts   = putStrLn versionString
---    | otherwise             = appMain opts args
-
 data Command = Version | Init | List deriving (Show, Eq)
 
 foldCommand :: a -> a -> a -> Command -> a
