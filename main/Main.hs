@@ -23,33 +23,8 @@ import Options.Applicative
     )
 import System.Environment ( getArgs )
 
---coreOptions :: [OptDescr CommandLineOption]
---coreOptions = 
---    [   Option "h?" ["help"]    (NoArg Help)    "print this usage message"
---    ,   Option "V"  ["version"] (NoArg Version) "output the version"
---    ]
---
---argOrder :: ArgOrder a
---argOrder = Permute
---
----- Define the additional options for your app here...
---options :: [OptDescr CommandLineOption]
---options = []
-
-usageString :: String
-usageString = "Usage: bolton [OPTIONS] args"
-
 versionString :: String
 versionString = "bolton: 0.0.1"
-
-usageMsg :: String
-usageMsg = ""
---usageMsg = usageInfo usageString (coreOptions ++ options)
-
--- | prints the usage message
-printUsageMsg :: IO ()
---printUsageMsg = putStrLn $ usageInfo usageString (coreOptions ++ options)
-printUsageMsg = return ()
 
 -- | checks the core flags of the app and if help and version dont appear passes control onto appMain where
 -- | the user can do their own opt checks
@@ -59,7 +34,14 @@ printUsageMsg = return ()
 --    | Version `elem` opts   = putStrLn versionString
 --    | otherwise             = appMain opts args
 
-data Command = Init | List | Version deriving (Show, Eq)
+data Command = Version | Init | List deriving (Show, Eq)
+
+foldCommand :: a -> a -> a -> Command -> a
+foldCommand v i l c = case c of
+    Version -> v
+    Init    -> i
+    List    -> l
+
 
 commandParser :: Parser Command
 commandParser =
@@ -82,7 +64,10 @@ parseAndRun p f = do
         _   -> execParser (info (p <**> helper) mempty) >>= f
 
 runCommand :: Command -> IO ()
-runCommand = const (pure ())
+runCommand = foldCommand printVersion (pure ()) (pure ())
+
+printVersion :: IO ()
+printVersion = putStrLn versionString
 
 main :: IO ()
 main = parseAndRun commandParser runCommand
