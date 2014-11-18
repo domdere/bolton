@@ -1,6 +1,11 @@
 module Main where
 
+import Control.Monad.Bolton
+
+import Prelude
 import Control.Applicative ( Applicative(..), (<**>), (<|>) )
+import Control.Monad.Trans.Either ( runEitherT )
+import Data.Either ( Either(..) )
 import Data.Functor ( (<$>) )
 import Data.Monoid ( (<>), mempty )
 import Options.Applicative
@@ -37,7 +42,7 @@ foldCommand v i l c = case c of
 
 commandParser :: Parser Command
 commandParser =
-        (flag' Version (short 'v' <> long "version" <> help "version info."))
+        flag' Version (short 'v' <> long "version" <> help "version info.")
     <|> (subparser $
             command' "init" "Initialise the bolton store" (pure Init)
         <>  command' "list" "List the installed apps" (pure List)
@@ -56,21 +61,17 @@ parseAndRun p f = do
         _   -> execParser (info (p <**> helper) mempty) >>= f
 
 runCommand :: Command -> IO ()
-runCommand = foldCommand printVersion (pure ()) (pure ())
+runCommand = foldCommand printVersion initCommand (pure ())
+
+initCommand :: IO ()
+initCommand = do
+    res <- runBolton (runEitherT initialiseBolton)
+    case res of
+        Left (BoltonInitialiseError (DirectoryAlreadyExists p)) -> putStrLn $ "Directory already exists: '" ++ p ++ "'"
+        Right ()                                                -> return ()
 
 printVersion :: IO ()
 printVersion = putStrLn versionString
 
 main :: IO ()
 main = parseAndRun commandParser runCommand
---    (opts, args, errorMsgs) <- getOpt argOrder (coreOptions ++ options) `fmap` getArgs
---    if null errorMsgs then
---        checkCoreFlagsAndRunMain opts args
---    else
---        ioError $ userError $ concat errorMsgs ++ usageMsg
-
--- Put the actual App code in here
-appMain :: [a] -> [String] -> IO ()
-appMain opts args = do
-    putStrLn "Command Line Args: "
-    mapM_ putStrLn args
