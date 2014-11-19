@@ -34,6 +34,7 @@ library
                     ,   array
                     ,   directory       == 1.2.*
                     ,   either          == 4.3.*
+                    ,   exceptions      == 0.6.*
                     ,   free            == 4.*
                     ,   lens            == 4.*
                     ,   mtl             == 2.1.*
@@ -49,6 +50,7 @@ library
     exposed-modules:    Control.Monad.Bolton
 
     other-modules:      LocalPrelude
+                    ,   Data.Environment
 
     default-extensions: NoImplicitPrelude
 

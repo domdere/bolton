@@ -12,6 +12,7 @@ module Control.Monad.Bolton (
     -- * Type
         Bolton
     -- * Error Types
+    ,   BoltonEnvironmentError(..)
     ,   BoltonInitialiseError(..)
     ,   BoltonMakeDirError(..)
     -- * functions
@@ -20,25 +21,31 @@ module Control.Monad.Bolton (
     ) where
 
 import LocalPrelude
+import Data.Environment
 
-import Control.Lens ( Iso, (^.), iso, over )
+import Control.Exception ( SomeException )
+import Control.Lens ( Iso, iso, over )
 import Control.Monad ( when )
+import Control.Monad.Catch ( MonadCatch(..) )
 import Control.Monad.Free ( Free(..), liftF )
 import Control.Monad.Trans ( lift )
 import Control.Monad.Trans.Either ( EitherT(EitherT), bimapEitherT, left, runEitherT )
 import Data.Bool ( Bool(..) )
 import Data.Either ( Either )
+import Data.List ( (++) )
 import System.Directory ( createDirectoryIfMissing, doesDirectoryExist )
-
+import System.Environment ( getEnv )
 
 data FreeBoltonF a =
         MakeBoltonDir (Either BoltonMakeDirError () -> a) String
+    |   GetEnvironment (Either BoltonEnvironmentError Environment -> a)
 
 newtype Bolton a = Bolton { _bolton :: Free FreeBoltonF a }
 
 instance Functor FreeBoltonF where
 --  fmap :: (a -> b) -> f a -> f b
-    fmap f (MakeBoltonDir g s) = MakeBoltonDir (f . g) s
+    fmap f (MakeBoltonDir g s)  = MakeBoltonDir (f . g) s
+    fmap f (GetEnvironment g)   = GetEnvironment (f . g)
 
 instance Functor Bolton where
 --  fmap :: (a -> b) -> f a -> f b
@@ -65,27 +72,34 @@ bolton = iso _bolton Bolton
 
 foldBolton
     :: (Monad m)
-    => (String -> EitherT BoltonMakeDirError m ()) -- ^ The action that attempts the create the directory
+    => (String -> EitherT BoltonMakeDirError m ())  -- ^ The action that attempts the create the directory
+    -> EitherT BoltonEnvironmentError m Environment -- ^ The action that produces the Environment
     -> Bolton a -> m a
-foldBolton mkDir x = case _bolton x of
+foldBolton mkDir getEnv'' x = let go = foldBolton mkDir getEnv'' . Bolton in case _bolton x of
     Pure y                      -> return y
-    Free (MakeBoltonDir f s)    -> runEitherT (mkDir s) >>= foldBolton mkDir . Bolton . f
+    Free (MakeBoltonDir f s)    -> runEitherT (mkDir s) >>= go . f
+    Free (GetEnvironment f)     -> runEitherT (getEnv'') >>= go . f
 
 -- Error Types
 
+data BoltonEnvironmentError = EnvVariableDoesntExist String
+
 data BoltonMakeDirError = DirectoryAlreadyExists String
 
-newtype BoltonInitialiseError = BoltonInitialiseError BoltonMakeDirError
+data BoltonInitialiseError =
+        InitMakeDir BoltonMakeDirError
+    |   InitEnv BoltonEnvironmentError
 
 initialiseBolton :: EitherT BoltonInitialiseError Bolton ()
 initialiseBolton = do
-    emap BoltonInitialiseError $ makeBoltonDir "~/.bolton/bin"
-    emap BoltonInitialiseError $ makeBoltonDir "~/.bolton/packages"
+    env <- emap InitEnv getBoltonEnv
+    emap InitMakeDir $ makeBoltonDir $ homeDir env ++ "/.bolton/bin"
+    emap InitMakeDir $ makeBoltonDir $ homeDir env ++ "/.bolton/packages"
 
 -- exported functions
 
 runBolton :: Bolton a -> IO a
-runBolton = foldBolton mkDirIO
+runBolton = foldBolton mkDirIO getEnvironmentIO
 
 -- IO functions
 
@@ -95,10 +109,24 @@ mkDirIO d = do
     when e (left $ DirectoryAlreadyExists d)
     lift $ createDirectoryIfMissing True d
 
+getEnvironmentIO :: EitherT BoltonEnvironmentError IO Environment
+getEnvironmentIO = environment <$> getEnv' "HOME"
+
+getEnv' :: String -> EitherT BoltonEnvironmentError IO String
+getEnv' s =
+    let
+        errorHandler :: (Monad m) => SomeException -> EitherT BoltonEnvironmentError m String
+        errorHandler = const $ left $ EnvVariableDoesntExist s
+    in
+        (lift $ getEnv s) `catch` errorHandler
+
 -- functions
 
 makeBoltonDir :: String -> EitherT BoltonMakeDirError Bolton ()
 makeBoltonDir = EitherT . Bolton . liftF . MakeBoltonDir id
+
+getBoltonEnv :: EitherT BoltonEnvironmentError Bolton Environment
+getBoltonEnv = EitherT $ Bolton $ liftF $ GetEnvironment id
 
 -- helpers
 

@@ -27,6 +27,7 @@ import Options.Applicative
     ,   subparser
     )
 import System.Environment ( getArgs )
+import System.Exit ( ExitCode(..), exitWith )
 
 versionString :: String
 versionString = "bolton: 0.0.1"
@@ -67,8 +68,11 @@ initCommand :: IO ()
 initCommand = do
     res <- runBolton (runEitherT initialiseBolton)
     case res of
-        Left (BoltonInitialiseError (DirectoryAlreadyExists p)) -> putStrLn $ "Directory already exists: '" ++ p ++ "'"
-        Right ()                                                -> return ()
+        Left (InitMakeDir (DirectoryAlreadyExists p))   -> putStrLn $ "Directory already exists: '" ++ p ++ "'"
+        Left (InitEnv (EnvVariableDoesntExist v))       -> do
+            putStrLn $ "Missing Environment Variable: '" ++ v ++ "'"
+            exitWith (ExitFailure 1)
+        Right ()                                        -> putStrLn "Successfully created bolton store."
 
 printVersion :: IO ()
 printVersion = putStrLn versionString
