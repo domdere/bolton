@@ -93,8 +93,8 @@ data BoltonInitialiseError =
 initialiseBolton :: EitherT BoltonInitialiseError Bolton ()
 initialiseBolton = do
     env <- emap InitEnv getBoltonEnv
-    emap InitMakeDir $ makeBoltonDir $ homeDir env ++ "/.bolton/bin"
-    emap InitMakeDir $ makeBoltonDir $ homeDir env ++ "/.bolton/packages"
+    emap InitMakeDir $ makeBoltonDir $ binDir env
+    emap InitMakeDir $ makeBoltonDir $ packagesDir env
 
 -- exported functions
 
@@ -127,6 +127,20 @@ makeBoltonDir = EitherT . Bolton . liftF . MakeBoltonDir id
 
 getBoltonEnv :: EitherT BoltonEnvironmentError Bolton Environment
 getBoltonEnv = EitherT $ Bolton $ liftF $ GetEnvironment id
+
+-- important values
+
+boltonStore :: Environment -> String
+boltonStore env = homeDir env ++ "/.bolton"
+
+binDir :: Environment -> String
+binDir env = boltonStore env ++ "/bin"
+
+packagesDir :: Environment -> String
+packagesDir env = boltonStore env ++ "/packages"
+
+packageDir :: Environment -> String -> String
+packageDir env package = packagesDir env ++ "/" ++ package
 
 -- helpers
 
