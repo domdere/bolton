@@ -32,12 +32,14 @@ library
     build-depends:      base < 5 && >= 4
                     ,   containers
                     ,   array
+                    ,   aeson           == 0.8.*
                     ,   directory       == 1.2.*
                     ,   either          == 4.3.*
                     ,   exceptions      == 0.6.*
                     ,   free            == 4.*
                     ,   lens            == 4.*
                     ,   mtl             == 2.1.*
+                    ,   text            == 1.2.*
 
     ghc-options:        -Wall
                         -fno-warn-unused-imports
@@ -48,6 +50,7 @@ library
     hs-source-dirs:     src
 
     exposed-modules:    Control.Monad.Bolton
+                    ,   Data.PackageInfo
 
     other-modules:      LocalPrelude
                     ,   Data.Environment
