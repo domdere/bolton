@@ -33,6 +33,7 @@ library
                     ,   containers
                     ,   array
                     ,   aeson           == 0.8.*
+                    ,   bytestring      == 0.10.*
                     ,   directory       == 1.2.*
                     ,   either          == 4.3.*
                     ,   exceptions      == 0.6.*

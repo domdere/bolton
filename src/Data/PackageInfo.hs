@@ -11,6 +11,7 @@ module Data.PackageInfo (
     -- * Types
         HackageLocation(..)
     ,   PackageSource(..)
+    ,   PackageInfo(..)
     ) where
 
 import LocalPrelude
@@ -53,6 +54,15 @@ instance ToJSON PackageSource where
         [   "source"        .= ("hackage" :: Text)
         ,   "version_info"  .= v
         ]
+
+data PackageInfo = PackageInfo
+    {   name        :: String
+    ,   location    :: PackageSource
+    ,   binaries    :: [String]
+    }   deriving (Generic)
+
+instance FromJSON PackageInfo
+instance ToJSON PackageInfo
 
 -- helpers
 
