@@ -16,22 +16,22 @@ module Data.PackageInfo (
 
 import LocalPrelude
 
+import Control.Monad ( join )
 import Data.Aeson ( FromJSON(..), ToJSON(..), Value(..), (.:), (.=), object )
 import Data.Aeson.Types ( typeMismatch )
 import Data.Either ( Either(..) )
-import Data.Maybe ( Maybe, fromMaybe )
-import Data.List ( (++) )
+import Data.List ( (++), intercalate )
 import Data.Text ( Text )
 
 import GHC.Generics ( Generic )
 
 data HackageLocation = HackageLocation
-    {   version :: Maybe String
+    {   version :: String
     }   deriving (Eq, Generic)
 
 instance Show HackageLocation where
 --  show :: a -> String
-    show x = "Hackage (version: " ++ fromMaybe "latest" (version x) ++ ")"
+    show x = "Hackage (version: " ++ version x ++ ")"
 
 instance FromJSON HackageLocation
 instance ToJSON HackageLocation
@@ -55,6 +55,10 @@ instance ToJSON PackageSource where
         ,   "version_info"  .= v
         ]
 
+instance Show PackageSource where
+--  show :: a -> String
+    show (Hackage x) = show x
+
 data PackageInfo = PackageInfo
     {   name        :: String
     ,   location    :: PackageSource
@@ -63,6 +67,16 @@ data PackageInfo = PackageInfo
 
 instance FromJSON PackageInfo
 instance ToJSON PackageInfo
+
+instance Show PackageInfo where
+--  show :: a -> String
+    show x = join
+        [   name x
+        ,   " (Source: "
+        ,   show (location x)
+        ,   "): "
+        ,   intercalate ", " (binaries x)
+        ]
 
 -- helpers
 

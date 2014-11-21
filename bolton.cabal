@@ -40,6 +40,8 @@ library
                     ,   free            == 4.*
                     ,   lens            == 4.*
                     ,   mtl             == 2.1.*
+                    ,   process         == 1.2.*
+                    ,   split           == 0.2.*
                     ,   text            == 1.2.*
 
     ghc-options:        -Wall

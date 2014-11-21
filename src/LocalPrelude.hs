@@ -16,6 +16,8 @@ module LocalPrelude (
     ,   Show(..)
     ,   Eq(..)
     -- * Types
+    ,   Char
+    ,   Int
     ,   IO
     ,   String
     -- * Operators
@@ -30,4 +32,3 @@ module LocalPrelude (
 
 import Prelude
 import Control.Applicative
-import Data.Functor
