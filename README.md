@@ -98,6 +98,16 @@ So its one command to set it up initially and then one line to build and setup a
 
 (In the future, it should be able to install them from github too).
 
+## Installing Bolton
+
+You can install it from this repository by cutting and pasting the following into your command line:
+
+```
+curl https://raw.githubusercontent.com/domdere/bolton/master/etc/bolton-install-github.sh | bash -eu
+```
+
+Or you can take a look at what the script is doing [here] [install-from-github-script] and do it yourself.
+
 ## Building the project
 
 Install the dependencies first with either:
@@ -182,3 +192,4 @@ The related `cabal-dev` and `sandbox` artifacts are already contained in the `.g
 [cabal-dev]: https://github.com/creswick/cabal-dev "creswick/cabal-dev on GitHub.com"
 [doctest-github]: https://github.com/sol/doctest-haskell "sol/doctest-haskell on GitHub.com"
 [doctest-userguide]: https://github.com/sol/doctest-haskell/blob/master/README.markdown#usage "doctest Usage Guide"
+[install-from-github-script]: ./etc/bolton-install-github.sh "Bolton Github Install Script"
