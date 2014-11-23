@@ -79,16 +79,17 @@ $ bolton init
 Successfully created bolton store
 Make sure '/home/user/.bolton/bin' is in your PATH
 # add `~/.bolton/bin` to your PATH
-$ bolton install-hackage -p pandoc
+$ bolton install-hackage -p yaml
 Creating Cabal sandbox..
-Installing pandoc...
+Installing yaml...
 Package Installed.
-Package Installed Successfully: pandoc (Source: Hackage (version: 1.13.1)): pandoc, trypandoc, make-pandoc-man-pages
+Package Installed Successfully: yaml (Source: Hackage (version: 0.8.9.3)): yaml2json, json2yaml
 ```
 
-So its one command to set it up initially and then one line to build and setup an app pulled from `Hackage`.
+So its one command to set it up initially and then one line to build and setup an app pulled from Hackage.
 
 (In the future, it should be able to install them from github too).
+
 ## Building the project
 
 Install the dependencies first with either:
