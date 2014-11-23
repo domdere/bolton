@@ -108,6 +108,8 @@ curl https://raw.githubusercontent.com/domdere/bolton/master/etc/bolton-install-
 
 Or you can take a look at what the script is doing [here] [install-from-github-script] and do it yourself.
 
+This will leave the `bolton` binary at `~/bin`, either add `~/bin` to your PATH or move it to your preferred location (that is in your PATH).
+
 ## Building the project
 
 Install the dependencies first with either:
