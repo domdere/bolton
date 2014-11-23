@@ -2,6 +2,10 @@
 
 Command line app to manage Haskell apps installed from hackage
 
+## Installing Haskell Command Line Apps
+
+### The Old Crap Way
+
 When it came to installing command line apps from Hackage, I used to do something like this:
 
 ```
@@ -47,6 +51,8 @@ This is a directory in the cabal sandbox that under my previous method was getti
 There are other similar such apps that are more critical to the typical Haskell build pipeline that also use hardcoded static paths into the cabal sandbox with which they were built.
 (Before sandboxes, these would have been in `~/.cabal/share`).
 
+### A Better, Correct Way
+
 So this is the process prescribed to me (or at least *one* of them, but its been the most reliable one so far) when installing a Haskell app, and it solves the problem decsribed above.
 
 1.  Create a directory `~/haskell-bins/`
@@ -70,6 +76,8 @@ $ ln -sf ~/haskell-bins/foo/.cabal-sandbox/bin/bar
 This isn't too complicated a process, but its still a bit much to get through to a beginner in an IRC channel who just wants to get their environment setup to write some Haskell!
 
 So `bolton` is supposed to create something like this `haskell-bins` dir for you and manage the above process and allow you to install/uninstall apps and list the ones you have installed etc...
+
+### The Bolton Way
 
 With `bolton` the process is reduced to:
 
