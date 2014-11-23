@@ -4,7 +4,7 @@ license:            BSD3
 license-file:       etc/LICENCE.md
 author:             Dom De Re
 maintainer:         Dom De Re
-copyright:          Copyright (C) 2014
+copyright:          Copyright (C) 2014-2015
 synopsis:           Command line app to manage Haskell apps installed from hackage
 category:           System
 description:        Command line app to manage Haskell apps installed from hackage
