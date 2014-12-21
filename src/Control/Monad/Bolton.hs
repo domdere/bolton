@@ -54,7 +54,7 @@ import System.Directory
     ,   setCurrentDirectory
     )
 import System.Environment ( getEnv )
-import System.Process ( readProcessWithExitCode )
+import System.Process ( createProcess, shell, readProcessWithExitCode, waitForProcess )
 import System.Exit ( ExitCode(..) )
 import System.IO ( putStrLn )
 
@@ -65,21 +65,23 @@ data FreeBoltonF a =
     |   WritePackageInfo (Either BoltonWritePackageInfoError () -> a) String PackageInfo
     |   BoltonCd (Either BoltonCdError () -> a) String
     |   BoltonPwd (Either BoltonPwdError String -> a)
-    |   BoltonShellCmd (Either BoltonShellCmdError String -> a) String [String] String
+    |   BoltonShellCmdSilent (Either BoltonShellCmdError String -> a) String [String] String
+    |   BoltonShellCmd (Either BoltonShellCmdError () -> a) String
     |   BoltonUserMsg a String
 
 newtype Bolton a = Bolton { _bolton :: Free FreeBoltonF a }
 
 instance Functor FreeBoltonF where
 --  fmap :: (a -> b) -> f a -> f b
-    fmap f (MakeBoltonDir g s)              = MakeBoltonDir (f . g) s
-    fmap f (GetEnvironment g)               = GetEnvironment (f . g)
-    fmap f (ReadPackageInfo g path)         = ReadPackageInfo (f . g) path
-    fmap f (WritePackageInfo g path p)      = WritePackageInfo (f . g) path p
-    fmap f (BoltonCd g path)                = BoltonCd (f . g) path
-    fmap f (BoltonPwd g)                    = BoltonPwd (f . g)
-    fmap f (BoltonShellCmd g path args sin) = BoltonShellCmd (f . g) path args sin
-    fmap f (BoltonUserMsg x msg)            = BoltonUserMsg (f x) msg
+    fmap f (MakeBoltonDir g s)                      = MakeBoltonDir (f . g) s
+    fmap f (GetEnvironment g)                       = GetEnvironment (f . g)
+    fmap f (ReadPackageInfo g path)                 = ReadPackageInfo (f . g) path
+    fmap f (WritePackageInfo g path p)              = WritePackageInfo (f . g) path p
+    fmap f (BoltonCd g path)                        = BoltonCd (f . g) path
+    fmap f (BoltonPwd g)                            = BoltonPwd (f . g)
+    fmap f (BoltonShellCmdSilent g path args sin)   = BoltonShellCmdSilent (f . g) path args sin
+    fmap f (BoltonShellCmd g cmd)                   = BoltonShellCmd (f . g) cmd
+    fmap f (BoltonUserMsg x msg)                    = BoltonUserMsg (f x) msg
 
 instance Functor Bolton where
 --  fmap :: (a -> b) -> f a -> f b
@@ -112,24 +114,26 @@ foldBolton
     -> (String -> PackageInfo -> EitherT BoltonWritePackageInfoError m ())      -- ^ The function that writes the package info
     -> (String -> EitherT BoltonCdError m ())                                   -- ^ function that sets the current working directory
     -> EitherT BoltonPwdError m String                                          -- ^ action that gets the current working directory.
-    -> (String -> [String] -> String -> EitherT BoltonShellCmdError m String)   -- ^ action that runs a shell command.
+    -> (String -> [String] -> String -> EitherT BoltonShellCmdError m String)   -- ^ action that runs a shell command silently, collecting stdout and stderr traffic for processing by the program.
+    -> (String -> EitherT BoltonShellCmdError m ())                             -- ^ action that runs a shell command, passing stdout and stderr directly to the user, the program only cares about the exit code..
     -> (String -> m ())                                                         -- ^ action to send a msg to the user.
     -> Bolton a
     -> m a
-foldBolton mkDir getEnv'' readInfo writeInfo cd pwd runShell userMsg x =
+foldBolton mkDir getEnv'' readInfo writeInfo cd pwd runShellSilent runShell userMsg x =
     let
-        go = foldBolton mkDir getEnv'' readInfo writeInfo cd pwd runShell userMsg . Bolton
+        go = foldBolton mkDir getEnv'' readInfo writeInfo cd pwd runShellSilent runShell  userMsg . Bolton
     in
         case _bolton x of
-            Pure y                                  -> return y
-            Free (MakeBoltonDir f s)                -> runEitherT (mkDir s) >>= go . f
-            Free (GetEnvironment f)                 -> runEitherT (getEnv'') >>= go . f
-            Free (ReadPackageInfo f path)           -> runEitherT (readInfo path) >>= go . f
-            Free (WritePackageInfo f path p)        -> runEitherT (writeInfo path p) >>= go . f
-            Free (BoltonCd f path)                  -> runEitherT (cd path) >>= go . f
-            Free (BoltonPwd f)                      -> runEitherT pwd >>= go . f
-            Free (BoltonShellCmd f cmd args sin)    -> runEitherT (runShell cmd args sin) >>= go . f
-            Free (BoltonUserMsg mx msg)             -> userMsg msg >> go mx
+            Pure y                                      -> return y
+            Free (MakeBoltonDir f s)                    -> runEitherT (mkDir s) >>= go . f
+            Free (GetEnvironment f)                     -> runEitherT (getEnv'') >>= go . f
+            Free (ReadPackageInfo f path)               -> runEitherT (readInfo path) >>= go . f
+            Free (WritePackageInfo f path p)            -> runEitherT (writeInfo path p) >>= go . f
+            Free (BoltonCd f path)                      -> runEitherT (cd path) >>= go . f
+            Free (BoltonPwd f)                          -> runEitherT pwd >>= go . f
+            Free (BoltonShellCmdSilent f cmd args sin)  -> runEitherT (runShellSilent cmd args sin) >>= go . f
+            Free (BoltonShellCmd f cmd)                 -> runEitherT (runShell cmd) >>= go . f
+            Free (BoltonUserMsg mx msg)                 -> userMsg msg >> go mx
 
 -- Error Types
 
@@ -210,7 +214,8 @@ instance Show BoltonPwdError where
 
 data BoltonShellCmdError =
         ShellCmdIOError String [String] String String
-    |   ShellCmdError String [String] String Int String String
+    |   ShellCmdSilentError String [String] String Int String String
+    |   ShellCmdError String Int
 
 instance Show BoltonShellCmdError where
 --  show :: a -> String
@@ -223,7 +228,7 @@ instance Show BoltonShellCmdError where
         ,   sin
         ,   "')"
         ]
-    show (ShellCmdError cmd args sin code sout serr) = join
+    show (ShellCmdSilentError cmd args sin code sout serr) = join
         [   "Non-Zero exit code ("
         ,   show code
         ,   ") Encountered trying to run '"
@@ -236,6 +241,14 @@ instance Show BoltonShellCmdError where
         ,   sin
         ,   "'"
         ]
+    show (ShellCmdError cmd code) = join
+        [   "Non-Zero exit code ("
+        ,   show code
+        ,   ") Encountered trying to run '"
+        ,   cmd
+        ,   "'"
+        ]
+
 
 data BoltonInstallHackageError =
         IHEnv BoltonEnvironmentError
@@ -269,14 +282,14 @@ installHackagePackage package mVersion = do
     emap IHMakeDir $ makeBoltonDir $ packageDir env package
     (binList, version'') <- inWorkingDir (packageDir env package) IHCd IHPwd $ do
         lift $ boltonUserMsg "Creating Cabal sandbox.."
-        _ <- emap IHCmd $ boltonCmd "cabal" ["sandbox", "init"] ""
+        _ <- emap IHCmd $ boltonCmd "cabal sandbox init"
         lift $ boltonUserMsg $ "Installing " ++ package ++ "..."
-        _ <- emap IHCmd $ boltonCmd "cabal" ["install", package ++ (maybe "" ('-' :) mVersion)] ""
+        _ <- emap IHCmd $ boltonCmd $ "cabal install " ++ package ++ (maybe "" ('-' :) mVersion)
         lift $ boltonUserMsg $ "Package Installed."
-        cabalInfo <- emap IHCmd $ boltonCmd "cabal" ["info", package] ""
-        binLine <- emap IHCmd $ boltonCmd "grep" ["Executables", "--colour=NEVER"] cabalInfo
+        cabalInfo <- emap IHCmd $ boltonCmdSilent "cabal" ["info", package] ""
+        binLine <- emap IHCmd $ boltonCmdSilent "grep" ["Executables", "--colour=NEVER"] cabalInfo
         let bins = binListParser binLine
-        versionLine <- emap IHCmd $ boltonCmd "grep" ["installed:", "--colour=NEVER"] cabalInfo
+        versionLine <- emap IHCmd $ boltonCmdSilent "grep" ["installed:", "--colour=NEVER"] cabalInfo
         let version' = versionParser versionLine
         return (bins, version')
 
@@ -287,10 +300,10 @@ installHackagePackage package mVersion = do
     return $ packageInfo
 
 linkBin :: Environment -> String -> String -> EitherT BoltonShellCmdError Bolton String
-linkBin env package bin = boltonCmd "ln" ["-sf", packageDir env package ++ "/.cabal-sandbox/bin/" ++ bin] ""
+linkBin env package bin = boltonCmdSilent "ln" ["-sf", packageDir env package ++ "/.cabal-sandbox/bin/" ++ bin] ""
 
 runBolton :: Bolton a -> IO a
-runBolton = foldBolton mkDirIO getEnvironmentIO readPackageInfoIO writePackageInfoIO boltonCdIO boltonPwdIO boltonCmdIO putStrLn
+runBolton = foldBolton mkDirIO getEnvironmentIO readPackageInfoIO writePackageInfoIO boltonCdIO boltonPwdIO boltonCmdSilentIO boltonCmdIO putStrLn
 
 -- IO functions
 
@@ -326,12 +339,20 @@ boltonCdIO path = (lift $ setCurrentDirectory path) `catch` (ioErrorCatcher $ Bo
 boltonPwdIO :: EitherT BoltonPwdError IO String
 boltonPwdIO = (lift getCurrentDirectory) `catch` (ioErrorCatcher BoltonPwdIOError)
 
-boltonCmdIO :: String -> [String] -> String -> EitherT BoltonShellCmdError IO String
-boltonCmdIO cmd args sin = do
+boltonCmdSilentIO :: String -> [String] -> String -> EitherT BoltonShellCmdError IO String
+boltonCmdSilentIO cmd args sin = do
     (eCode, sout, serr) <- lift $ readProcessWithExitCode cmd args sin
     case eCode of
         ExitSuccess         -> return sout
-        ExitFailure code    -> left $ ShellCmdError cmd args sin code sout serr
+        ExitFailure code    -> left $ ShellCmdSilentError cmd args sin code sout serr
+
+boltonCmdIO :: String -> EitherT BoltonShellCmdError IO ()
+boltonCmdIO cmd = do
+    (_, _, _, proc) <- lift $ createProcess $ shell cmd
+    eCode <- lift $ waitForProcess proc
+    case eCode of
+        ExitSuccess         -> return ()
+        ExitFailure code    -> left $ ShellCmdError cmd code
 
 -- Bolton functions
 
@@ -361,8 +382,11 @@ inWorkingDir wd cdError pwdError mx = do
     emap cdError $ boltonCd cwd
     return x
 
-boltonCmd :: String -> [String] -> String -> EitherT BoltonShellCmdError Bolton String
-boltonCmd cmd args sin = EitherT $ Bolton $ liftF $ BoltonShellCmd id cmd args sin
+boltonCmdSilent :: String -> [String] -> String -> EitherT BoltonShellCmdError Bolton String
+boltonCmdSilent cmd args sin = EitherT $ Bolton $ liftF $ BoltonShellCmdSilent id cmd args sin
+
+boltonCmd :: String -> EitherT BoltonShellCmdError Bolton ()
+boltonCmd cmd = EitherT $ Bolton $ liftF $ BoltonShellCmd id cmd
 
 boltonUserMsg :: String -> Bolton ()
 boltonUserMsg = Bolton . liftF . BoltonUserMsg ()
